@@ -1,6 +1,10 @@
 **
 !app/
 !app/**
+!components/
+!components/**
+!lib/
+!lib/**
 !server/
 !server/**
 !public/
@@ -8,8 +12,10 @@
 !package.json
 !pnpm-lock.yaml
 !next.config.ts
+!postcss.config.mjs
 !tsconfig.json
 !biome.json
+!components.json
 !.gitignore
 **/db-bootstrap
 **/db-migrator

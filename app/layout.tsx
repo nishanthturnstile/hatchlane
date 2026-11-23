@@ -1,5 +1,5 @@
-import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
+import "@fontsource-variable/inter";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -10,7 +10,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
-      <body className={GeistSans.className}>{children}</body>
+      <body>
+        <div className="isolate">{children}</div>
+      </body>
     </html>
   );
 }

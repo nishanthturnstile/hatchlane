@@ -7,8 +7,10 @@ ENV PATH="/opt/pnpm:${PATH}"
 FROM toolchain AS checks
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --strict-peer-dependencies
-COPY .gitignore biome.json next.config.ts tsconfig.json ./
+COPY .gitignore biome.json components.json next.config.ts postcss.config.mjs tsconfig.json ./
 COPY app ./app
+COPY components ./components
+COPY lib ./lib
 COPY server ./server
 COPY public ./public
 RUN pnpm run typecheck && pnpm run check
@@ -25,6 +27,6 @@ ENV NODE_ENV=production \
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
 COPY --from=build --chown=node:node /app/public ./public
-COPY --from=build /app/node_modules/geist/LICENSE.txt ./licenses/Geist.txt
+COPY --from=build /app/node_modules/@fontsource-variable/inter/LICENSE ./licenses/Inter.txt
 USER node
 CMD ["node", "server.js"]

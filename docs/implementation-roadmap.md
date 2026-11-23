@@ -1,6 +1,6 @@
 # Hatchlane implementation roadmap
 
-Build the first software simulation on local Docker Compose. Use trusted local HTTPS for desk and phone tests. Stages 0–6 run on the workstation or a local VM, including release rehearsal. Any hosted preview, staging environment or site install waits until the product is finalized and the site deployment is approved. The five product slices below use the core requirements, stack pins and screen behavior. [Product plan](core/product-plan.md#build-order-and-acceptance) · [Architecture](core/architecture.md#delivery-and-verification) · [Design system](core/design-system.md#accessibility-and-release-checks)
+Build the first software simulation on local Docker Compose. Use trusted local HTTPS for desk and phone tests. Stages 0–6 run on the workstation or a local VM, including release rehearsal. Any hosted preview, staging environment or site install waits until the product is finalized and the site deployment is approved. The five product slices below use the product requirements, stack pins and accessibility checks. [Product plan](core/product-plan.md#build-order-and-acceptance) · [Architecture](core/architecture.md#delivery-and-verification) · [Accessibility checks](core/product-plan.md#accessibility-checks)
 
 | Order | What the team can demonstrate |
 |---|---|
@@ -83,7 +83,7 @@ Implement the controller lease, application startup invalidation, operation IDs 
 ## 6 · Local product acceptance
 
 - Run all five workflow demonstrations from a clean Compose project as the named users. Use a separate disposable seed instance for runs that intentionally retain reservations. Check role restrictions, restart behavior, delayed feedback, lost connectivity and the history trail on a phone and desk browser. Repeat the field path with external internet unavailable and the LAN reachable.
-- Exercise the design system's accessibility acceptance, including keyboard drawing interactions, screen-reader announcements, phone reflow and visible warnings. Measure polling load, upload limits, capacity and backup and recovery time using representative data.
+- Exercise the product's accessibility checks, including keyboard drawing interactions, screen-reader announcements, phone reflow and warnings that remain understandable in grayscale. Measure polling load, upload limits, capacity and backup and recovery time using representative data.
 - Build the release candidate locally with standalone Next.js, maintenance commands, local fonts and PDF resources. On an isolated local Linux amd64 VM, load the pinned images from the release bundle and rehearse installation with external internet unavailable. Verify readiness, a reboot with the data disk detached, upgrades with a verified backup, both rollback paths and recovery holds before reopening writes.
 
 **Gate to deployment.** Finalize the simulation scope, resolve acceptance failures, record the exact candidate and its local evidence, and get the product owner's sign-off. Keep the candidate and all development environments local until that gate passes.

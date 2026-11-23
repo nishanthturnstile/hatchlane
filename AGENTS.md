@@ -2,8 +2,7 @@
 
 - [Implementation roadmap](docs/implementation-roadmap.md) defines stage order and exit checks.
 - [Architecture](docs/core/architecture.md) defines version pins, runtime boundaries, data and permissions.
-- [Product plan](docs/core/product-plan.md) defines actors, permit behavior and acceptance.
-- [Design system](docs/core/design-system.md) defines screen behavior and accessibility.
+- [Product plan](docs/core/product-plan.md) defines actors, permit and screen behavior, and accessibility checks.
 - [Startup guide](README.md) covers build, startup, logs, health, HTTPS trust, stop and isolated tests.
 
 Work locally on the software simulation. Physical equipment integration requires a separate engineering decision. Hosted, staging and site deployments require product sign-off and deployment approval as described in the roadmap. Keep operational data and credentials local. Only Caddy publishes a port. Use distinct migration and application database identities and enforce site membership and duty checks on protected reads and commands as those features land. Keep real credentials, private CA material and database artifacts out of Git.
