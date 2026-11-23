@@ -1,0 +1,10 @@
+body {
+  margin: 0;
+  background: #f2f4f5;
+  color: #17263a;
+}
+
+main {
+  width: min(40rem, calc(100% - 2rem));
+  margin: 3rem auto;
+}

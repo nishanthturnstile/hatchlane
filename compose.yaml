@@ -1,0 +1,109 @@
+name: hatchlane
+
+services:
+  db:
+    image: postgres:19.0-trixie
+    environment:
+      POSTGRES_USER: hatchlane_bootstrap
+      POSTGRES_DB: hatchlane
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_bootstrap
+    secrets:
+      - db_bootstrap
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "hatchlane_bootstrap", "-d", "hatchlane"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  db-roles:
+    image: postgres:19.0-trixie
+    entrypoint: ["/bin/sh", "/setup/db-roles.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGDATABASE: hatchlane
+      PGUSER: hatchlane_bootstrap
+    secrets:
+      - db_bootstrap
+      - db_migrator
+      - db_app
+    volumes:
+      - ./ops/db-roles.sh:/setup/db-roles.sh:ro
+    networks:
+      - database
+    restart: "no"
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+      db-roles:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: db
+      PGDATABASE: hatchlane
+      PGUSER: hatchlane_app
+      PGPASSWORD_FILE: /run/secrets/db_app
+    secrets:
+      - db_app
+    networks:
+      - web
+      - database
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(response => { if (!response.ok) process.exitCode = 1 }).catch(() => { process.exitCode = 1 })"
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  caddy:
+    image: caddy:2.11.9
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      HATCHLANE_HOSTNAME: ${HATCHLANE_HOSTNAME:-hatchlane.localhost}
+    ports:
+      - "${HATCHLANE_BIND_IP:-127.0.0.1}:${HATCHLANE_HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./ops/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - ingress
+      - web
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+networks:
+  ingress:
+  web:
+    internal: true
+  database:
+    internal: true
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+secrets:
+  db_bootstrap:
+    file: ${HATCHLANE_SECRET_DIR:-.local/secrets}/db-bootstrap
+  db_migrator:
+    file: ${HATCHLANE_SECRET_DIR:-.local/secrets}/db-migrator
+  db_app:
+    file: ${HATCHLANE_SECRET_DIR:-.local/secrets}/db-app

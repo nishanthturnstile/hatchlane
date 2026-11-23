@@ -1,0 +1,16 @@
+**
+!app/
+!app/**
+!server/
+!server/**
+!public/
+!public/**
+!package.json
+!pnpm-lock.yaml
+!next.config.ts
+!tsconfig.json
+!biome.json
+!.gitignore
+**/db-bootstrap
+**/db-migrator
+**/db-app

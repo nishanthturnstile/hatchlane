@@ -1,0 +1,12 @@
+{
+	auto_https disable_redirects
+	skip_install_trust
+	servers {
+		protocols h1 h2
+	}
+}
+
+https://{$HATCHLANE_HOSTNAME} {
+	tls internal
+	reverse_proxy app:3000
+}
