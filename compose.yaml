@@ -1,0 +1,160 @@
+name: hatchlane
+
+x-app-config: &app-config
+  PGHOST: db
+  PGDATABASE: hatchlane
+  PGUSER: hatchlane_app
+  PGPASSWORD_FILE: /run/secrets/db_app
+  HATCHLANE_PUBLIC_URL: https://${HATCHLANE_HOSTNAME:-hatchlane.localhost}:${HATCHLANE_HTTPS_PORT:-8443}
+  HATCHLANE_AUTH_SECRET_FILE: /run/secrets/auth_secret
+
+services:
+  db:
+    image: postgres:19.0-trixie
+    environment:
+      POSTGRES_USER: hatchlane_bootstrap
+      POSTGRES_DB: hatchlane
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_bootstrap
+    secrets:
+      - db_bootstrap
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "hatchlane_bootstrap", "-d", "hatchlane"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  db-roles:
+    image: postgres:19.0-trixie
+    entrypoint: ["/bin/sh", "/setup/db-roles.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGDATABASE: hatchlane
+      PGUSER: hatchlane_bootstrap
+    secrets:
+      - db_bootstrap
+      - db_migrator
+      - db_app
+    volumes:
+      - ./ops/db-roles.sh:/setup/db-roles.sh:ro
+    networks:
+      - database
+    restart: "no"
+
+  migrate:
+    image: ${COMPOSE_PROJECT_NAME:-hatchlane}-maintenance
+    build:
+      context: .
+      target: maintenance
+    command: ["node", "scripts/migrate.ts"]
+    depends_on:
+      db-roles:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: db
+      PGDATABASE: hatchlane
+      PGUSER: hatchlane_migrator
+      PGPASSWORD_FILE: /run/secrets/db_migrator
+    secrets:
+      - db_migrator
+    networks:
+      - database
+
+  admin-setup:
+    image: ${COMPOSE_PROJECT_NAME:-hatchlane}-maintenance
+    profiles: [setup]
+    command: ["node", "scripts/setup-admin.ts"]
+    environment: *app-config
+    secrets:
+      - db_app
+      - auth_secret
+    networks:
+      - database
+
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    environment:
+      MP_MAX_MESSAGES: 100
+    networks:
+      - mail
+
+  app:
+    build: .
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *app-config
+      HATCHLANE_MAP_SOURCE: /maps/region.pmtiles
+    volumes:
+      - ${HATCHLANE_MAP_SOURCE_DIR:-.local/map-source}:/maps:ro
+    secrets:
+      - db_app
+      - auth_secret
+    networks:
+      - web
+      - database
+      - mail
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(response => { if (!response.ok) process.exitCode = 1 }).catch(() => { process.exitCode = 1 })"
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  caddy:
+    image: caddy:2.11.9
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      HATCHLANE_HOSTNAME: ${HATCHLANE_HOSTNAME:-hatchlane.localhost}
+    ports:
+      - "${HATCHLANE_BIND_IP:-127.0.0.1}:${HATCHLANE_HTTPS_PORT:-8443}:443"
+      - "127.0.0.1:${HATCHLANE_MAILPIT_PORT:-8025}:8025"
+    volumes:
+      - ./ops/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - ingress
+      - web
+      - mail
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+networks:
+  ingress:
+  web:
+    internal: true
+  database:
+    internal: true
+  mail:
+    internal: true
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+secrets:
+  db_bootstrap:
+    file: ${HATCHLANE_SECRET_DIR:-.local/secrets}/db-bootstrap
+  db_migrator:
+    file: ${HATCHLANE_SECRET_DIR:-.local/secrets}/db-migrator
+  db_app:
+    file: ${HATCHLANE_SECRET_DIR:-.local/secrets}/db-app
+  auth_secret:
+    file: ${HATCHLANE_SECRET_DIR:-.local/secrets}/auth-secret

@@ -1,0 +1,23 @@
+{
+	auto_https disable_redirects
+	skip_install_trust
+	servers {
+		protocols h1 h2
+	}
+}
+
+https://{$HATCHLANE_HOSTNAME} {
+	tls internal
+	header Referrer-Policy no-referrer
+	reverse_proxy app:3000 {
+		header_up X-Real-IP {remote_host}
+	}
+}
+
+http://:8025 {
+	@loopback host 127.0.0.1 localhost
+	handle @loopback {
+		reverse_proxy mailpit:8025
+	}
+	respond 404
+}

@@ -1,0 +1,24 @@
+services:
+  caddy:
+    ports: !override
+      - target: 443
+        host_ip: 127.0.0.1
+        published: "${HATCHLANE_HTTPS_PORT}"
+      - target: 8025
+        host_ip: 127.0.0.1
+
+  db-smoke:
+    image: postgres:19.0-trixie
+    profiles:
+      - test
+    entrypoint: ["/bin/sh", "/setup/db-smoke.sh"]
+    environment:
+      PGHOST: db
+      PGDATABASE: hatchlane
+    secrets:
+      - db_migrator
+      - db_app
+    volumes:
+      - ./tests/db-smoke.sh:/setup/db-smoke.sh:ro
+    networks:
+      - database
