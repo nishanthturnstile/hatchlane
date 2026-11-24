@@ -1,0 +1,32 @@
+# Site location and offline Site Explorer
+
+## Scope and acceptance
+
+- Insert an optional **Site location** step after **Site details** and before **Invite people**. Initialize a new selection from the device's location with permission. An Admin can pick a center on the map, enter coordinates with a keyboard, and adjust the radius. Default to 1 km and support 0.5–10 km. Fit the coverage circle after changes. Allow **Skip for now**. Persist the completed step across reloads.
+- Save the selected area as a local 2D map. After first-time setup, open **Site Explorer** for the new site. Keep **Overview** available for site details and invitations. Let existing site Admins set or replace a map from Site Explorer. Members can view the map. A site without a map has an empty state.
+- Keep asset registration, lock pins, P&ID extraction, satellite imagery and automatic map updates outside this milestone. Set up a real regional source for local validation and keep fixture writes within disposable projects.
+
+## Implementation
+
+1. **Prepare the source.** Provision one clustered PMTiles v3 regional archive with the Protomaps v4 layers and native zoom 15 for mapped building outlines. Mount its containing directory read-only in the app and replace the source while the app is stopped. Use go-pmtiles 1.31.2, pinned by image digest, to extract tiles along the coverage circle. Source preparation may use the public archive from a provisioning workstation. Application requests and map viewing stay on the Hatchlane origin. A missing source lets onboarding continue and gives Admins a clear empty state. [Provisioning instructions](../README.md#set-up-a-local-site-map)
+2. **Persist map data.** Add a migration that creates `site_map`, keyed by `site.slug`, with the chosen center, radius, bounds and bounded archive bytes. Add an optional map step completion timestamp to `admin_onboarding`. Existing sites and completed onboarding rows require no backfill. Validate the radius and center in Zod and reject coverage outside the prepared source, including areas that cross Web Mercator limits or the antimeridian. Use the same circle polygon for extraction and display. Hide map details outside the circle in the saved view. Validate the output and enforce a 20 MiB archive cap. Stage the cut in temporary files, apply a subprocess timeout and limit concurrent extraction. Replace a working map only after a new archive succeeds. Publish metadata and bytes with one database statement. For onboarding, publish the map and advance the step in the same transaction. Skip advances the step without creating a map.
+3. **Authorize reads and writes.** Admin membership is required to read the regional picker source and configure a site map. Allow the onboarding Admin to configure only the first site they are onboarding. Recheck access under a transaction after extraction, and reject a late write after skip, save or completion. Require a resolved step to complete new onboarding. Grandfather already completed rows. Ordinary workspace membership is required to open a site's saved archive. Add authenticated PMTiles endpoints with correct byte-range handling, including `206` and `416`. Read only the requested byte slice from PostgreSQL. Use `private, no-store` and check the URL's map revision on every range read so replacements cannot mix archives.
+4. **Build the UI.** Reuse shared shadcn controls and the existing onboarding action pattern. Use one local MapLibre component for the picker and `/workspace/:siteId/explorer`. Draw roads, water, buildings and the coverage circle with a basic flat style. Bundle the renderer and the style. Keep the style free of external glyph, icon and tile requests. Preserve OpenStreetMap attribution. Use the same Site location editor in Site Explorer for editing an existing setup. Preserve explicit valid return destinations through authentication and open the newly created site's Explorer when onboarding has no explicit destination.
+5. **Verify and start locally.** Run Biome, TypeScript, and the isolated account and map checks against PostgreSQL. Exercise a real prepared archive, radius adjustment, save, skip, resume, unauthorized reads and writes, and revision-bound byte ranges. Block external browser requests and check the saved map after removing the regional source and recreating the app. Rebuild the local app and verify the current workspace stays intact.
+
+## Local verification
+
+- Docker build checks passed. The disposable Playwright account flow passed with an empty source directory and with a Bengaluru regional archive. The map run covered a phone-width viewport, outside-network request blocking, membership checks and saved map rendering after source removal and app recreation.
+- The local Compose workspace applied migration 003 and returned a healthy response over trusted HTTPS. The existing site and Admin were preserved.
+- The India archive was verified and sampled in Delhi and Port Blair. The disposable Delhi browser run verified the 1 km default, device location, zoom controls, circle resizing, save and offline viewing. The nationwide source is installed in the local workspace.
+- The disposable India run with `HATCHLANE_TEST_INDIA_MAP=1` and `HATCHLANE_TEST_MAP_SOURCE="$PWD/.local/map-source/region.pmtiles"` passed `./scripts/test-local.sh --auth`. It used simulated Delhi GPS, browsed the region while keeping the selected pin, repinned the map center, and saved Chennai coordinates with a 1.5 km radius. The resulting map opened after removal of the regional source.
+- The live center picker passed `./scripts/test-local.sh --auth` with the same India archive and with no archive installed. Playwright checked coordinate changes while dragging in onboarding, Create site, and Map settings. The settings test saved the release position and reopened the picker to verify the persisted coordinates. The local app returned a healthy HTTPS response after restart.
+
+## References
+
+- [Protomaps regional extracts](https://docs.protomaps.com/guide/getting-started#_3-extract-any-area)
+- [Protomaps building detail](https://docs.protomaps.com/basemaps/layers#buildings)
+- [MapLibre PMTiles source](https://maplibre.org/maplibre-gl-js/docs/examples/pmtiles-source-and-protocol/)
+- [MapLibre camera controls](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/#fitbounds)
+- [Protomaps places layer](https://docs.protomaps.com/basemaps/layers#places)
+- [MapLibre local worker with Next.js](https://maplibre.org/maplibre-gl-js/docs/)

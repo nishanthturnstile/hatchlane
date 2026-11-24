@@ -4,3 +4,4 @@ import { api } from "@/server/api/app";
 export const runtime = "nodejs";
 
 export const GET = handle(api);
+export const POST = handle(api);

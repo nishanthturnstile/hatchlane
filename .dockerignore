@@ -3,10 +3,14 @@
 !app/**
 !components/
 !components/**
+!hooks/
+!hooks/**
 !lib/
 !lib/**
 !server/
 !server/**
+!scripts/
+!scripts/*.ts
 !public/
 !public/**
 !package.json
@@ -20,3 +24,4 @@
 **/db-bootstrap
 **/db-migrator
 **/db-app
+**/auth-secret

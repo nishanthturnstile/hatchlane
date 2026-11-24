@@ -6,7 +6,7 @@ secret_dir=${1:-.local/secrets}
 mkdir -p "$secret_dir"
 chmod 700 "$secret_dir"
 
-for name in db-bootstrap db-migrator db-app; do
+for name in db-bootstrap db-migrator db-app auth-secret; do
   if [ -s "$secret_dir/$name" ]; then
     continue
   fi
@@ -19,6 +19,6 @@ for name in db-bootstrap db-migrator db-app; do
   if ! ln "$temporary" "$secret_dir/$name" && [ ! -s "$secret_dir/$name" ]; then
     exit 1
   fi
-  rm "$temporary"
+  rm -f "$temporary"
   trap - EXIT
 done

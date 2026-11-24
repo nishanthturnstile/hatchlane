@@ -29,6 +29,9 @@
 db-bootstrap
 db-migrator
 db-app
+auth-secret
+/playwright-report/
+/test-results/
 *.key
 *.crt
 *.dump
